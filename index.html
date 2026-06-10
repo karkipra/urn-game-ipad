@@ -257,6 +257,27 @@
     font-size: 15px; color: #6b21a8; font-weight: 600;
   }
 
+  /* ── Persistent score counter ────────────────────────────────── */
+  #scoreCounter {
+    position: fixed;
+    top: 10px;
+    right: 14px;
+    z-index: 999;
+    background: rgba(255,247,237,0.92);
+    border: 2px solid #f59e0b;
+    border-radius: 14px;
+    padding: 5px 12px;
+    font-size: clamp(13px, 1.6vw, 17px);
+    font-weight: 800;
+    color: #78350f;
+    display: none;
+    gap: 8px;
+    align-items: center;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  #scoreCounter.visible { display: flex; }
+
   /* ── Confetti ─────────────────────────────────────────────────── */
   .confetti { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
   .confetti span {
@@ -267,6 +288,11 @@
 </style>
 </head>
 <body>
+
+<div id="scoreCounter">
+  <span>🎮 <span id="scRounds">0</span></span>
+  <span>⭐ <span id="scStars">0</span></span>
+</div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
@@ -652,6 +678,9 @@ function doReveal() {
   totalRounds += 1;
   totalStars  += stars.split('⭐').length - 1;
   $('scoreboard').innerHTML = `🎮 Games played: <strong>${totalRounds}</strong> &nbsp;·&nbsp; ⭐ Stars: <strong>${totalStars}</strong>`;
+  $('scRounds').textContent = totalRounds;
+  $('scStars').textContent  = totalStars;
+  $('scoreCounter').classList.add('visible');
 }
 
 function paintRevealMarbles() {

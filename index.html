@@ -309,6 +309,7 @@
 <div id="scoreCounter">
   <span>🎮 <span id="scRounds">0</span></span>
   <span>⭐ <span id="scStars">0</span></span>
+  <span>🎯 <span id="scWins">0</span></span>
 </div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -436,6 +437,7 @@ let currentGuess = null;
 let stage        = 'draw1';
 let totalRounds  = 0;
 let totalStars   = 0;
+let totalWins    = 0;
 
 /* ── Helpers ── */
 function $(id) { return document.getElementById(id); }
@@ -687,9 +689,11 @@ function doReveal() {
   $('revealEncourage').textContent = msg;
   totalRounds += 1;
   totalStars  += stars.split('⭐').length - 1;
-  $('scoreboard').innerHTML = `🎮 Games played: <strong>${totalRounds}</strong> &nbsp;·&nbsp; ⭐ Stars: <strong>${totalStars}</strong>`;
+  if (stars === '⭐⭐⭐') totalWins += 1;
+  $('scoreboard').innerHTML = `🎮 Games: <strong>${totalRounds}</strong> &nbsp;·&nbsp; ⭐ Stars: <strong>${totalStars}</strong> &nbsp;·&nbsp; 🎯 Bullseyes: <strong>${totalWins}</strong>`;
   $('scRounds').textContent = totalRounds;
   $('scStars').textContent  = totalStars;
+  $('scWins').textContent   = totalWins;
   $('scoreCounter').classList.add('visible');
 }
 

@@ -1,84 +1,97 @@
-# Marble Jar Game (Urn Task)
+# Marble Jar Game
 
-A kid-friendly (~age 7+) iPad-ready implementation of the classical urn task from Bayesian reasoning research. Single self-contained HTML file, zero dependencies.
+A kid-friendly iPad app for testing probabilistic reasoning in children. Based on the classical urn task paradigm from Bayesian cognition research. Single HTML file, zero dependencies.
 
-## What it is
+## What it tests
 
-The **urn task** is a well-studied paradigm in cognitive science for measuring probabilistic reasoning and belief updating. This version wraps it in a playful "marble jar" metaphor suitable for children.
+Children see a jar being "randomly chosen" from 13 possible jars (4 to 16 red marbles out of 20). They draw 6 marbles in two rounds and make a guess after each round. The key research signal is the gap between guess 1 and guess 2: does the child update their belief after seeing new evidence? Bayesian-optimal behavior is proportional updating. Anchoring shows as no update. Noise sensitivity shows as wild swings.
 
-### Game mechanics
+## Game flow
 
-- 13 possible jars, each containing 20 marbles with a different number of red ones (4 to 16 red)
-- One jar is secretly selected at random each round
-- The player draws 6 marbles total, split into two rounds:
-  - Draw 3 marbles, then make a **first guess** (how many red out of 20)
-  - Draw 3 more marbles, then make a **final guess**
-- Marbles are drawn **with replacement** (Bernoulli sampling)
-- Scoring is based on the final guess only:
-  - 0-1 off: 3 stars + confetti
-  - 2 off: 2 stars + confetti
-  - 3-4 off: 1 star
-  - 5+: encouragement emoji, no stars
-- Session score (games + stars) persists in-tab across rounds
+1. **Intro screen** - Shows all 13 jars with actual marble fills (4 red through 16 red), title, brief explainer, Let's Play button.
+2. **Shuffle screen** - All 13 plain jars (no marble counts visible) with a spotlight animation that randomly lands on one. The jar chosen is theater only; the actual red count is assigned randomly after the animation.
+3. **Play screen** - Draw 3 marbles from the big jar (click/tap), then guess. Draw 3 more, then final guess. Marble draws are Bernoulli sampling with replacement.
+4. **Reveal screen** - Shows true red count, both guesses, stars earned, and session scoreboard.
 
-### What the two-guess structure tests
+## Scoring
 
-The gap between guess1 and guess2 is the primary research signal: it measures how much a child updates their belief after seeing new evidence. A child who never updates (guess2 always equals guess1) shows anchoring or conservatism. A child who wildly swings shows noise sensitivity. Bayesian-optimal behavior is gradual, proportional updating.
+| Distance from true count | Stars | Confetti |
+|---|---|---|
+| 0 off | 3 stars | yes |
+| 1 off | 3 stars | yes |
+| 2 off | 2 stars | yes |
+| 3-4 off | 1 star | no |
+| 5+ off | emoji only | no |
+
+## Persistent counter (top right)
+
+Appears after the first completed round and stays for the session:
+- Games played
+- Total stars
+- Bullseyes (rounds with 3 stars, i.e. within 1 of the true count)
+
+Resets on page refresh. No backend or localStorage used.
+
+## Layout
+
+Designed for iPad. Responds to orientation:
+
+- **Landscape**: 2 rows of jars (7 + 6), jars sized at 11vh height
+- **Portrait**: 3 rows of jars (5 + 5 + 3), jars sized at 10vh height
+
+Both orientations use the same flex-wrap layout with `display: contents` on the row divs so orientation media queries control items-per-row without JS.
 
 ## File structure
 
 ```
 urn-game-ipad/
-  index.html    - the entire game (HTML + CSS + JS, no build step)
+  index.html    - entire game (HTML + CSS + JS, no build step)
   README.md     - this file
 ```
 
 ## Running locally
 
-Just open `index.html` in any browser. No server needed.
-
-For iPad testing over a local network (e.g. Mac running the file, iPad as client):
-
 ```bash
-# From the project directory
-python3 -m http.server 8080
-# Then open http://<your-mac-ip>:8080 on the iPad
+cd urn-game-ipad
+python3 -m http.server 8081 --bind 0.0.0.0
 ```
 
-## Hosting
+Open `http://localhost:8081` on laptop or `http://<your-local-ip>:8081` on iPad (same WiFi).
 
-The game is a single static HTML file, so any static host works:
+On Windows you need a firewall rule to allow the iPad through:
+```
+netsh advfirewall firewall add rule name="MarbleGame8081" protocol=TCP dir=in localport=8081 action=allow
+```
 
-- **GitHub Pages**: push to a repo, enable Pages on `main` branch root
-- **Netlify**: drag-and-drop the folder at netlify.com/drop
-- **Vercel**: `vercel --prod` from the directory
+## Deployment
 
-All three give an HTTPS URL suitable for iPad Safari with no further configuration.
+Deployed on Railway via GitHub repo link. Push to `main` triggers auto-deploy.
 
-## iPad-specific notes
+Repo: `karkipra/urn-game-ipad`
 
-- Touch targets: the big jar (260x320px) and stepper buttons (56x56px) are large enough for finger taps
-- No hover states are required for any core interaction
-- `viewport` meta tag is set for device-width scaling
-- Designed at 880px max-width, fits well in both portrait and landscape on iPad
-- Comic Sans renders natively on iOS
-
-## Current game parameters (all in JS constants at top of script)
+## Game parameters
 
 | Constant | Value | Meaning |
 |---|---|---|
-| `NUM_JARS` | 13 | Number of distinct jar types (4 red to 16 red) |
+| `NUM_JARS` | 13 | Jar types shown (4 red to 16 red) |
 | `TOTAL` | 20 | Total marbles per jar |
-| `MIN_RED` | 4 | Minimum red marbles in any jar |
-| `MAX_RED` | 16 | Maximum red marbles in any jar |
+| `MIN_RED` | 4 | Minimum red marbles |
+| `MAX_RED` | 16 | Maximum red marbles |
 | `DRAWS_TOTAL` | 6 | Total draws per round |
-| `DRAWS_R1` | 3 | Draws before the first guess |
+| `DRAWS_R1` | 3 | Draws before first guess |
 
-## What is NOT yet implemented
+## Key implementation notes
 
-- Data collection / response logging (no backend)
-- Participant ID or session labeling
-- Researcher / admin view
-- Configurable difficulty (draw count, jar range)
-- Forced fullscreen / kiosk mode for unsupervised testing
-- Persistent scores across page refreshes (no localStorage yet)
+- Marble positions use a seeded hex-grid (Park-Miller LCG shuffle) so the same jar always shows the same visual layout
+- SVG viewBox `0 0 100 120` with marble positions centered at x=50
+- Orientation layout uses `display: contents` on `.jars-row` divs so all 13 `.jar-item` elements participate directly in the parent flex container. CSS `@media (orientation: landscape/portrait)` sets `width: calc(100%/7)` vs `width: 20%` to control wrapping
+- Tap highlight suppressed globally with `-webkit-tap-highlight-color: transparent` and `user-select: none`
+- No em dashes anywhere (house rule)
+
+## Not yet built
+
+- Data logging (no backend, no localStorage)
+- Participant ID or session labels
+- Researcher admin view
+- Configurable difficulty
+- Kiosk / forced fullscreen mode

@@ -76,21 +76,23 @@
   }
   .intro-header { text-align: center; }
   .intro-header h1 {
-    font-size: clamp(34px, 4vw, 48px);
+    font-size: clamp(38px, 4.5vw, 54px);
     color: var(--ink);
     text-shadow: 2px 2px 0 #fde68a;
     margin: 0;
+    line-height: 1.1;
   }
   .intro-header h2 {
-    font-size: clamp(21px, 2.6vw, 30px);
+    font-size: clamp(24px, 2.8vw, 34px);
     color: #334155;
-    margin: 2px 0 0;
+    margin: 4px 0 0;
+    line-height: 1.2;
   }
   .intro-explainer {
-    font-size: clamp(18px, 2vw, 22px);
+    font-size: clamp(20px, 2.2vw, 26px);
     color: #4b5563;
     line-height: 1.3;
-    margin: 2px 0 0;
+    margin: 4px 0 0;
   }
   .intro-footer { text-align: center; }
   .intro-jars {
@@ -99,21 +101,21 @@
     justify-content: center;
     width: 100%;
   }
-  .jars-row { display: contents; } /* transparent to flex — jars flow directly into .intro-jars */
+  .jars-row { display: contents; } /* transparent to flex, jars flow directly into .intro-jars */
   .jar-item {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-  /* Landscape: 7 per row → 2 rows */
+  /* Landscape: 7 per row, 2 rows */
   @media (orientation: landscape) {
     .jar-item { width: calc(100% / 7); }
-    .jar-item svg { height: clamp(110px, 15vh, 140px); width: auto; display: block; overflow: visible; }
+    .jar-item svg { height: clamp(90px, 13vh, 125px); width: auto; display: block; overflow: visible; }
   }
-  /* Portrait: 5 per row → 3 rows (5+5+3) */
+  /* Portrait: 5 per row, 3 rows */
   @media (orientation: portrait) {
     .jar-item { width: 20%; }
-    .jar-item svg { height: clamp(110px, 13vh, 150px); width: auto; display: block; overflow: visible; }
+    .jar-item svg { height: clamp(100px, 12vh, 140px); width: auto; display: block; overflow: visible; }
   }
   .jar-label {
     font-size: clamp(10px, 1.2vw, 14px);
@@ -158,11 +160,11 @@
   /* Same sizing as intro jars per orientation */
   @media (orientation: landscape) {
     .pick-jar { width: calc(100% / 7); }
-    .pick-jar svg { height: clamp(110px, 15vh, 140px); }
+    .pick-jar svg { height: clamp(90px, 13vh, 125px); }
   }
   @media (orientation: portrait) {
     .pick-jar { width: 20%; }
-    .pick-jar svg { height: clamp(110px, 13vh, 150px); }
+    .pick-jar svg { height: clamp(100px, 12vh, 140px); }
   }
   .pick-jar.is-active  { opacity: 1; transform: scale(1.1); }
   .pick-jar.is-chosen  {
@@ -174,7 +176,7 @@
   .pick-caption {
     font-size: 22px; font-weight: 700;
     margin-top: 20px;
-    height: 32px; /* fixed height — no layout shift */
+    height: 32px; /* fixed height, no layout shift */
     display: flex; align-items: center; justify-content: center;
   }
 
@@ -329,7 +331,7 @@
     <div class="intro-header">
       <h1>Marble Jar Game! 🫙</h1>
       <h2>Can you guess how many <span style="color:var(--red)">RED</span> marbles are in the jar?</h2>
-      <p class="intro-explainer">Each jar holds <strong>20 marbles</strong> — some <strong style="color:var(--red)">red</strong>, some white. We'll pick <strong>one</strong> jar for you. Guess how many red marbles are inside!</p>
+      <p class="intro-explainer">Each jar holds <strong>20 marbles</strong>: some <strong style="color:var(--red)">red</strong>, some white. We will pick <strong>one</strong> jar for you. Guess how many red marbles are inside!</p>
     </div>
     <div class="intro-jars">
       <div class="jars-row" id="jarsRow1"></div>
@@ -579,9 +581,9 @@ function updateNudge() {
     n.textContent = '🤔 How many red marbles are in the jar?';
   } else if (stage === 'draw2') {
     const left = DRAWS_TOTAL - drawn.length;
-    n.textContent = `👆 ${left} more marble${left === 1 ? '' : 's'} — keep going!`;
+    n.textContent = `👆 ${left} more marble${left === 1 ? '' : 's'}, keep going!`;
   } else if (stage === 'guess2') {
-    n.textContent = '🎯 Final guess — you got this!';
+    n.textContent = '🎯 Final guess. You got this!';
   }
 }
 
@@ -646,7 +648,7 @@ function resetGuessPicker() {
 function showGuessBlock(which) {
   $('guessLabel').innerHTML = which === 'first'
     ? 'Guess how many <span style="color:var(--red)">RED</span> marbles are in the jar!'
-    : 'Final guess — how many <span style="color:var(--red)">RED</span> marbles?';
+    : 'Final guess: how many <span style="color:var(--red)">RED</span> marbles?';
   resetGuessPicker();
   const block = $('guessBlock');
   block.hidden = false;
@@ -678,7 +680,7 @@ function doReveal() {
   let stars, msg;
   if      (diff === 0) { stars = '⭐⭐⭐'; msg = '🎯 BULLSEYE! You nailed it!';    bigConfetti(60); }
   else if (diff === 1) { stars = '⭐⭐⭐'; msg = '🎉 One off! Amazing!';            bigConfetti(40); }
-  else if (diff === 2) { stars = '⭐⭐';   msg = '🌟 Great — only two off!';       bigConfetti(20); }
+  else if (diff === 2) { stars = '⭐⭐';   msg = '🌟 Great, only two off!';        bigConfetti(20); }
   else if (diff <= 4)  { stars = '⭐';     msg = '👍 Nice try — keep playing!'; }
   else                 { stars = '💪';     msg = '💪 Tricky one! Try another jar!'; }
   $('revealStars').textContent     = stars;

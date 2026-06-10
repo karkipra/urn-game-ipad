@@ -16,6 +16,11 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    user-select: none;
+  }
 
   body {
     height: 100vh;
@@ -102,7 +107,7 @@
   }
   .jar-item svg {
     display: block;
-    height: clamp(90px, 12vh, 115px);
+    height: clamp(115px, 16vh, 145px);
     width: auto;
     overflow: visible;
   }

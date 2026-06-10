@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marble Jar Game!</title>
+<style>
+  /* ───────────────────────────────────────────────────────────────
+     Marble Jar Game — a kid-friendly (~age 7) standalone version of
+     the urn task. Self-contained HTML / CSS / JS; no dependencies.
+     ─────────────────────────────────────────────────────────────── */
+
+  :root {
+    --red:    #e63946;
+    --white:  #ffffff;
+    --gold:   #fbbf24;
+    --sky:    #6cb8ff;
+    --grass:  #76e286;
+    --plum:   #a78bfa;
+    --ink:    #1f2937;
+    --paper:  #fff7ed;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: 'Comic Sans MS', 'Trebuchet MS', system-ui, sans-serif;
+    background:
+      radial-gradient(circle at 20% 10%, #fef3c7 0%, transparent 50%),
+      radial-gradient(circle at 80% 90%, #ddd6fe 0%, transparent 50%),
+      var(--paper);
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 60px;
+  }
+
+  .game {
+    width: 100%;
+    max-width: 880px;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    margin: 0 0 4px;
+    color: var(--ink);
+    text-shadow: 2px 2px 0 #fde68a;
+  }
+  h2 { font-size: clamp(20px, 3vw, 28px); margin: 4px 0 16px; color: #334155; }
+  p, label { font-size: clamp(16px, 2vw, 20px); line-height: 1.4; color: #374151; }
+
+  /* All phases stack in the same area; only the .is-active one shows. */
+  .phase { display: none; padding: 16px 12px; }
+  .phase.is-active { display: block; animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes pop {
+    from { transform: scale(0.9); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  /* Big squishy primary button. */
+  .btn {
+    background: var(--grass);
+    color: #064e3b;
+    border: none;
+    border-radius: 999px;
+    padding: 16px 36px;
+    font-size: clamp(18px, 2.5vw, 22px);
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #389e46, 0 10px 16px rgba(56, 158, 70, 0.35);
+    transition: transform 0.1s, box-shadow 0.1s;
+    font-family: inherit;
+  }
+  .btn:hover  { transform: translateY(-2px); }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #389e46, 0 4px 8px rgba(56, 158, 70, 0.35); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 0 6px 0 #389e46; }
+  .btn--play { background: var(--gold); color: #78350f; box-shadow: 0 6px 0 #b45309, 0 10px 16px rgba(180, 83, 9, 0.35); }
+  .btn--play:active { box-shadow: 0 2px 0 #b45309, 0 4px 8px rgba(180, 83, 9, 0.35); }
+  .btn--quiet { background: #e5e7eb; color: #1f2937; box-shadow: 0 4px 0 #9ca3af; font-size: 16px; padding: 10px 22px; }
+  .btn--quiet:active { box-shadow: 0 1px 0 #9ca3af; }
+
+  /* ── Intro: 13 small jars ───────────────────────────────────── */
+  .mini-jars {
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    gap: 6px;
+    max-width: 720px;
+    margin: 18px auto;
+  }
+  @media (max-width: 700px) { .mini-jars { grid-template-columns: repeat(7, 1fr); } }
+  .mini-jar { aspect-ratio: 1 / 1.2; }
+  .mini-jar svg { width: 100%; height: 100%; }
+
+  /* ── Pick screen: spotlight on the chosen jar ──────────────── */
+  .pick-stage { position: relative; height: 220px; display: flex; align-items: center; justify-content: center; }
+  .pick-jar { width: 140px; height: 168px; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .pick-jar.is-chosen { transform: scale(1.4); filter: drop-shadow(0 0 16px #fcd34d); }
+  .pick-caption { font-size: 22px; font-weight: 700; margin-top: 16px; min-height: 28px; }
+
+  /* ── Main play stage ───────────────────────────────────────── */
+  .play-stage {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+    align-items: center;
+    margin-top: 12px;
+  }
+  @media (min-width: 720px) { .play-stage { grid-template-columns: 1fr 360px; } }
+
+  .big-jar { display: flex; justify-content: center; }
+  .big-jar svg { width: 260px; height: 320px; cursor: pointer; transition: transform 0.15s; }
+  .big-jar svg:hover  { transform: scale(1.03); }
+  .big-jar svg.is-locked { cursor: default; }
+  .big-jar svg.is-locked:hover { transform: none; }
+  .big-jar .question-mark {
+    font-size: 100px; font-weight: 900; fill: #fde68a; stroke: #f59e0b; stroke-width: 4;
+    paint-order: stroke; opacity: 0.85;
+  }
+
+  /* Slots for drawn marbles */
+  .slots {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 14px auto;
+  }
+  .slot {
+    width: 60px; height: 60px; border-radius: 999px;
+    border: 4px dashed #d1d5db; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.3s;
+  }
+  .slot.is-filled { border-style: solid; }
+  .slot.is-filled .marble { transform: scale(1); }
+  .marble {
+    width: 44px; height: 44px; border-radius: 999px;
+    border: 3px solid; box-shadow: inset 4px 4px 6px rgba(255,255,255,0.6), 0 3px 6px rgba(0,0,0,0.2);
+    transform: scale(0);
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .marble.red   { background: var(--red);   border-color: #b91c1c; }
+  .marble.white { background: var(--white); border-color: #e5e7eb; }
+
+  /* Counter dots showing "draws so far" */
+  .dots { display: flex; gap: 8px; justify-content: center; margin: 8px 0 4px; }
+  .dot { width: 14px; height: 14px; border-radius: 999px; background: #e5e7eb; transition: background 0.25s; }
+  .dot.is-on { background: var(--sky); }
+
+  /* Big nudge messages */
+  .nudge {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border: 3px solid #f59e0b;
+    border-radius: 20px;
+    padding: 14px 18px;
+    margin: 10px auto;
+    max-width: 480px;
+    font-size: clamp(18px, 2.2vw, 22px);
+    font-weight: 700;
+    color: #92400e;
+    animation: nudgeBounce 1.2s ease-in-out infinite alternate;
+  }
+  @keyframes nudgeBounce {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-3px); }
+  }
+
+  /* Guess controls: a chunky stepper */
+  .guess-block {
+    background: #fff;
+    border: 4px solid var(--sky);
+    border-radius: 24px;
+    padding: 18px 14px 22px;
+    margin: 16px auto;
+    max-width: 460px;
+    box-shadow: 0 8px 24px rgba(108, 184, 255, 0.25);
+  }
+  .guess-question { font-size: clamp(18px, 2.4vw, 22px); font-weight: 700; margin-bottom: 12px; color: #1e3a8a; }
+  .stepper { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px 0; }
+  .stepper button {
+    width: 56px; height: 56px; border-radius: 50%; border: none;
+    background: var(--sky); color: #fff;
+    font-size: 28px; font-weight: 900; cursor: pointer;
+    box-shadow: 0 4px 0 #2c79c2;
+    font-family: inherit;
+  }
+  .stepper button:active { transform: translateY(2px); box-shadow: 0 2px 0 #2c79c2; }
+  .stepper button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .stepper .value {
+    font-size: 52px; font-weight: 900; min-width: 90px;
+    background: #fef3c7; border: 4px solid var(--gold);
+    border-radius: 18px; padding: 6px 12px; color: #78350f;
+  }
+
+  /* Reveal screen */
+  .reveal-jar { display: flex; justify-content: center; margin: 12px 0 8px; }
+  .reveal-jar svg { width: 280px; height: 340px; }
+  .reveal-line { font-size: clamp(20px, 3vw, 28px); font-weight: 700; margin: 10px 0; }
+  .stars { font-size: 56px; letter-spacing: 6px; margin: 8px 0; line-height: 1; }
+  .scoreboard {
+    background: #fff; border: 3px solid #c084fc; border-radius: 18px;
+    padding: 12px 18px; display: inline-block; margin: 8px auto;
+    font-size: 18px; color: #6b21a8; font-weight: 600;
+  }
+  .confetti { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; overflow: hidden; }
+  .confetti span {
+    position: absolute; top: -20px; width: 12px; height: 12px;
+    animation: confettiFall 2.4s linear forwards;
+  }
+  @keyframes confettiFall {
+    to { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG symbols for the jar shape (reused across phases) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <!-- Cute jar shape, viewBox 0 0 100 120 -->
+    <symbol id="jarShape" viewBox="0 0 100 120">
+      <!-- foot -->
+      <rect x="40" y="108" width="20" height="6" rx="2" fill="#fef3c7" stroke="#92400e" stroke-width="2"/>
+      <!-- body -->
+      <path d="M 28 36 Q 20 42 16 58 Q 12 80 18 96 Q 24 110 50 110 Q 76 110 82 96 Q 88 80 84 58 Q 80 42 72 36 Z"
+            fill="#fef3c7" stroke="#92400e" stroke-width="2.5"/>
+      <!-- neck -->
+      <path d="M 32 36 Q 32 28 36 26 Q 50 22 64 26 Q 68 28 68 36 Z"
+            fill="#fef3c7" stroke="#92400e" stroke-width="2.5"/>
+      <!-- rim highlight -->
+      <ellipse cx="50" cy="26" rx="14" ry="3" fill="#fffbeb" stroke="#92400e" stroke-width="2"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="game">
+
+  <!-- ── Phase 1: intro ─────────────────────────────────────────── -->
+  <section class="phase is-active" id="phaseIntro">
+    <h1>🎲 Marble Jar Game 🫙</h1>
+    <h2>Can you guess how many <span style="color: var(--red)">RED</span> marbles?</h2>
+    <p>There are <strong>13 magic jars</strong>. Each jar holds <strong>20 marbles</strong>.<br>
+      Some are <span style="color: var(--red); font-weight: 700">red</span>, some are white.<br>
+      We'll pick <strong>one</strong> jar for you. Your job: <strong>guess how many red marbles</strong> are inside!
+    </p>
+    <div class="mini-jars" id="miniJars"></div>
+    <p style="font-size: 18px; color: #6b7280">
+      Some jars have only a few red marbles. Some have lots. <strong>4 to 16 red</strong>.
+    </p>
+    <button class="btn btn--play" id="startBtn">🎉 Let's Play! 🎉</button>
+  </section>
+
+  <!-- ── Phase 2: pick a jar ────────────────────────────────────── -->
+  <section class="phase" id="phasePick">
+    <h2>Picking your magic jar…</h2>
+    <div class="pick-stage">
+      <svg class="pick-jar" id="pickJar"><use href="#jarShape"/></svg>
+    </div>
+    <div class="pick-caption" id="pickCaption">🎲 shuffling… 🎲</div>
+  </section>
+
+  <!-- ── Phase 3: play (draws + guesses) ────────────────────────── -->
+  <section class="phase" id="phasePlay">
+    <div class="nudge" id="phaseNudge">Click the jar to draw a marble!</div>
+
+    <div class="play-stage">
+      <div class="big-jar">
+        <svg id="bigJar" viewBox="0 0 100 120" role="button" tabindex="0" aria-label="Click to draw a marble">
+          <use href="#jarShape"/>
+          <text class="question-mark" x="50" y="80" text-anchor="middle">?</text>
+        </svg>
+      </div>
+      <div>
+        <div class="dots" id="drawDots"></div>
+        <div class="slots" id="drawSlots"></div>
+
+        <!-- Guess block (hidden until enough draws are in) -->
+        <div class="guess-block" id="guessBlock" hidden>
+          <div class="guess-question" id="guessLabel">How many <span style="color: var(--red)">RED</span> marbles?</div>
+          <div class="stepper">
+            <button id="guessMinus" type="button" aria-label="Fewer">−</button>
+            <div class="value" id="guessValue">10</div>
+            <button id="guessPlus" type="button" aria-label="More">+</button>
+          </div>
+          <button class="btn" id="guessSubmit" type="button">That's my guess!</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Phase 4: reveal ───────────────────────────────────────── -->
+  <section class="phase" id="phaseReveal">
+    <h2>Drumroll… 🥁</h2>
+    <div class="reveal-jar">
+      <svg id="revealJar" viewBox="0 0 100 120">
+        <use href="#jarShape"/>
+        <g id="revealMarbles"></g>
+      </svg>
+    </div>
+    <div class="reveal-line" id="revealAnswer"></div>
+    <div class="reveal-line" id="revealYourGuess"></div>
+    <div class="stars" id="revealStars"></div>
+    <div class="reveal-line" id="revealEncourage" style="color:#6b21a8"></div>
+    <div class="scoreboard" id="scoreboard"></div>
+    <p>
+      <button class="btn btn--play" id="playAgainBtn">Play Again! 🎲</button>
+    </p>
+  </section>
+
+</div>
+
+<div class="confetti" id="confetti" aria-hidden="true"></div>
+
+<script>
+/* ──────────────────────────────────────────────────────────────
+   STATE
+   ────────────────────────────────────────────────────────────── */
+const NUM_JARS    = 13;       // 4 red ... 16 red ⇒ 13 distinct jars
+const TOTAL       = 20;
+const MIN_RED     = 4;
+const MAX_RED     = 16;
+const DRAWS_TOTAL = 6;        // 3 + 3
+const DRAWS_R1    = 3;        // before first guess
+
+let trueRed     = 0;          // hidden answer this round
+let drawn       = [];         // 'red' | 'white'
+let guess1      = null;
+let guess2      = null;
+let currentGuess = 10;
+let stage       = 'draw1';    // 'draw1' | 'guess1' | 'draw2' | 'guess2' | 'reveal'
+
+// Cross-round score persisted only for this tab.
+let totalRounds = 0;
+let totalStars  = 0;
+
+/* ──────────────────────────────────────────────────────────────
+   HELPERS
+   ────────────────────────────────────────────────────────────── */
+function $(id) { return document.getElementById(id); }
+function showPhase(name) {
+  document.querySelectorAll('.phase').forEach(p => p.classList.remove('is-active'));
+  $('phase' + name).classList.add('is-active');
+}
+function randInt(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function svgEl(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   INTRO — paint 13 little jars with sample contents
+   ────────────────────────────────────────────────────────────── */
+function paintMiniJars() {
+  const root = $('miniJars');
+  root.innerHTML = '';
+  for (let r = MIN_RED; r <= MAX_RED; r++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'mini-jar';
+    wrap.title = `${r} red marbles`;
+    // Mini SVG: just colour the body with proportion of red.
+    wrap.innerHTML = `
+      <svg viewBox="0 0 100 120">
+        <use href="#jarShape"/>
+        <text x="50" y="78" text-anchor="middle" font-size="28" font-weight="900" fill="${r >= 10 ? '#b91c1c' : '#1f2937'}">${r}</text>
+        <text x="50" y="100" text-anchor="middle" font-size="13" font-weight="700" fill="#92400e">red</text>
+      </svg>`;
+    root.appendChild(wrap);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   PICK A JAR — animate shuffle, land on a random colour count
+   ────────────────────────────────────────────────────────────── */
+function pickJar() {
+  // Cute "shuffle" animation: jiggle the jar a few times then pick.
+  const jarEl = $('pickJar');
+  const captionEl = $('pickCaption');
+  let bounces = 0;
+  const maxBounces = 8;
+  captionEl.textContent = '🎲 shuffling… 🎲';
+
+  function bounce() {
+    if (bounces >= maxBounces) {
+      // Final pick.
+      trueRed = randInt(MIN_RED, MAX_RED);
+      jarEl.classList.add('is-chosen');
+      captionEl.innerHTML = '🌟 This is YOUR jar! 🌟';
+      setTimeout(() => beginRound(), 1100);
+      return;
+    }
+    bounces++;
+    jarEl.style.transform = `translateX(${(bounces % 2 ? -1 : 1) * 14}px) rotate(${(bounces % 2 ? -8 : 8)}deg)`;
+    setTimeout(() => {
+      jarEl.style.transform = '';
+      setTimeout(bounce, 70);
+    }, 110);
+  }
+  jarEl.classList.remove('is-chosen');
+  bounce();
+}
+
+/* ──────────────────────────────────────────────────────────────
+   ROUND PLAY — draws + stepper guess UI
+   ────────────────────────────────────────────────────────────── */
+function beginRound() {
+  drawn = [];
+  guess1 = guess2 = null;
+  currentGuess = 10;
+  stage = 'draw1';
+  $('drawDots').innerHTML = '';
+  $('drawSlots').innerHTML = '';
+  for (let i = 0; i < DRAWS_TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    $('drawDots').appendChild(d);
+    const s = document.createElement('div');
+    s.className = 'slot';
+    $('drawSlots').appendChild(s);
+  }
+  $('guessBlock').hidden = true;
+  $('guessValue').textContent = currentGuess;
+  $('bigJar').classList.remove('is-locked');
+  updateNudge();
+  showPhase('Play');
+}
+
+function updateNudge() {
+  const nudge = $('phaseNudge');
+  if (stage === 'draw1') {
+    const left = DRAWS_R1 - drawn.length;
+    nudge.textContent = left === DRAWS_R1
+      ? '👆 Click the jar to draw a marble!'
+      : `🌟 ${left} more marble${left === 1 ? '' : 's'} until your first guess!`;
+  } else if (stage === 'guess1') {
+    nudge.textContent = '🤔 How many red marbles do you think?';
+  } else if (stage === 'draw2') {
+    const left = DRAWS_TOTAL - drawn.length;
+    nudge.textContent = `👆 ${left} more marble${left === 1 ? '' : 's'} — click the jar!`;
+  } else if (stage === 'guess2') {
+    nudge.textContent = '🎯 Final guess time!';
+  }
+}
+
+function drawMarble() {
+  if (stage !== 'draw1' && stage !== 'draw2') return;
+  // Bernoulli draw with replacement, based on the hidden trueRed.
+  const isRed = Math.random() < (trueRed / TOTAL);
+  const color = isRed ? 'red' : 'white';
+  drawn.push(color);
+
+  const idx = drawn.length - 1;
+  const slot = $('drawSlots').children[idx];
+  slot.classList.add('is-filled');
+  const m = document.createElement('div');
+  m.className = `marble ${color}`;
+  slot.appendChild(m);
+
+  // Update the dots row.
+  $('drawDots').children[idx].classList.add('is-on');
+
+  // Phase transitions.
+  if (stage === 'draw1' && drawn.length === DRAWS_R1) {
+    stage = 'guess1';
+    $('bigJar').classList.add('is-locked');
+    showGuessBlock('first');
+  } else if (stage === 'draw2' && drawn.length === DRAWS_TOTAL) {
+    stage = 'guess2';
+    $('bigJar').classList.add('is-locked');
+    showGuessBlock('final');
+  }
+  updateNudge();
+}
+
+function showGuessBlock(which) {
+  const block = $('guessBlock');
+  $('guessLabel').innerHTML = which === 'first'
+    ? 'Your <strong>first guess</strong>: how many <span style="color: var(--red)">RED</span>?'
+    : 'Your <strong>final guess</strong>: how many <span style="color: var(--red)">RED</span>?';
+  $('guessValue').textContent = currentGuess;
+  block.hidden = false;
+  block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function stepGuess(delta) {
+  const next = currentGuess + delta;
+  if (next < MIN_RED || next > MAX_RED) return;
+  currentGuess = next;
+  $('guessValue').textContent = currentGuess;
+}
+
+function submitGuess() {
+  if (stage === 'guess1') {
+    guess1 = currentGuess;
+    stage = 'draw2';
+    $('guessBlock').hidden = true;
+    $('bigJar').classList.remove('is-locked');
+    updateNudge();
+    // Scroll back up to the jar so the kid sees the next action.
+    $('bigJar').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else if (stage === 'guess2') {
+    guess2 = currentGuess;
+    stage = 'reveal';
+    doReveal();
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   REVEAL — show every marble, score, and a play-again button
+   ────────────────────────────────────────────────────────────── */
+function doReveal() {
+  showPhase('Reveal');
+  paintRevealMarbles();
+  $('revealAnswer').innerHTML = `The jar had <span style="color: var(--red); font-weight: 900">${trueRed} red</span> marbles (and ${TOTAL - trueRed} white).`;
+  $('revealYourGuess').innerHTML = `Your final guess was <strong>${guess2}</strong>.`;
+
+  const diff = Math.abs(guess2 - trueRed);
+  let stars, msg;
+  if (diff === 0)      { stars = '⭐⭐⭐'; msg = '🎯 BULLSEYE! You nailed it!'; bigConfetti(60); }
+  else if (diff === 1) { stars = '⭐⭐⭐'; msg = '🎉 So close — one off! Amazing!'; bigConfetti(40); }
+  else if (diff === 2) { stars = '⭐⭐';   msg = '🌟 Great guess — only two off!'; bigConfetti(20); }
+  else if (diff <= 4)  { stars = '⭐';     msg = '👍 Nice try — keep playing!'; }
+  else                 { stars = '💪';     msg = '💪 Tricky one! Try another jar!'; }
+
+  $('revealStars').textContent = stars;
+  $('revealEncourage').textContent = msg;
+
+  totalRounds += 1;
+  totalStars  += stars.split('⭐').length - 1;
+  $('scoreboard').innerHTML =
+    `🎮 Games played: <strong>${totalRounds}</strong> &nbsp;·&nbsp; ⭐ Stars: <strong>${totalStars}</strong>`;
+}
+
+function paintRevealMarbles() {
+  // Lay 20 marbles in a 5×4 grid inside the jar body.
+  const g = $('revealMarbles');
+  g.innerHTML = '';
+  const colors = [];
+  for (let i = 0; i < trueRed; i++)              colors.push('red');
+  for (let i = 0; i < TOTAL - trueRed; i++)      colors.push('white');
+  shuffle(colors);
+
+  const cols = 5, rows = 4;
+  const x0 = 28, y0 = 50, dx = 11, dy = 12;
+  for (let i = 0; i < colors.length; i++) {
+    const cx = x0 + (i % cols) * dx;
+    const cy = y0 + Math.floor(i / cols) * dy;
+    const c = svgEl('circle', {
+      cx, cy, r: 4.5,
+      fill: colors[i] === 'red' ? '#e63946' : '#ffffff',
+      stroke: colors[i] === 'red' ? '#b91c1c' : '#9ca3af',
+      'stroke-width': 1,
+      opacity: 0,
+    });
+    g.appendChild(c);
+    // Staggered fade-in for a cute reveal feel.
+    setTimeout(() => { c.setAttribute('opacity', '1'); }, 40 * i);
+  }
+}
+
+function bigConfetti(n) {
+  const root = $('confetti');
+  const colors = ['#e63946', '#fbbf24', '#76e286', '#6cb8ff', '#a78bfa', '#f472b6'];
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('span');
+    s.style.left = (Math.random() * 100) + 'vw';
+    s.style.background = colors[i % colors.length];
+    s.style.animationDelay = (Math.random() * 0.4) + 's';
+    s.style.borderRadius = Math.random() < 0.4 ? '50%' : '2px';
+    s.style.transform = `rotate(${Math.random() * 360}deg)`;
+    root.appendChild(s);
+    setTimeout(() => s.remove(), 2600);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   WIRING
+   ────────────────────────────────────────────────────────────── */
+paintMiniJars();
+
+$('startBtn').addEventListener('click', () => {
+  showPhase('Pick');
+  setTimeout(pickJar, 200);
+});
+
+$('bigJar').addEventListener('click', drawMarble);
+$('bigJar').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); drawMarble(); }
+});
+$('guessMinus').addEventListener('click', () => stepGuess(-1));
+$('guessPlus').addEventListener('click', () => stepGuess(+1));
+$('guessSubmit').addEventListener('click', submitGuess);
+
+$('playAgainBtn').addEventListener('click', () => {
+  showPhase('Pick');
+  setTimeout(pickJar, 200);
+});
+</script>
+
+</body>
+</html>
